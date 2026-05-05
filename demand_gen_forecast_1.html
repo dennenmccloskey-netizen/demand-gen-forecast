@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demand Gen Forecast — B2B Revenue Waterfall</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0a0c10;--surface:#111318;--surface2:#181c24;--surface3:#1e2330;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+    --accent:#c8f060;--accent2:#60c8f0;--accent3:#f060a0;--accent4:#f0a060;
+    --text:#e8eaf0;--text2:#8890a8;--text3:#4a5068;
+    --red:#f05060;--green:#60f0a0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(200,240,96,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,240,96,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .app{position:relative;z-index:1;}
+  .header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--border);background:rgba(10,12,16,0.96);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);}
+  .header-left{display:flex;align-items:center;gap:14px;}
+  .logo-mark{width:30px;height:30px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;}
+  .header-title{font-family:'DM Serif Display',serif;font-size:17px;letter-spacing:-0.3px;}
+  .header-subtitle{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.5px;}
+  .header-badge{background:rgba(200,240,96,0.1);border:1px solid rgba(200,240,96,0.25);color:var(--accent);font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;letter-spacing:1px;text-transform:uppercase;}
+  .scenario-bar{display:flex;align-items:center;gap:8px;padding:10px 28px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .scenario-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-right:6px;}
+  .scenario-btn{padding:5px 14px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.5px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all 0.2s;}
+  .scenario-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .scenario-btn.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600;}
+  .forrester-badge{margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);border:1px solid rgba(96,200,240,0.25);padding:4px 10px;}
+  .nav-tabs{display:flex;padding:0 28px;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto;}
+  .nav-tab{padding:11px 18px;font-size:12px;font-weight:500;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;letter-spacing:0.3px;}
+  .nav-tab:hover{color:var(--text);}
+  .nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .main{padding:20px 28px;}
+  .section{display:none;}
+  .section.active{display:block;}
+  .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px;}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);padding:14px;position:relative;overflow:hidden;}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:0.5;}
+  .kpi-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
+  .kpi-value{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);line-height:1;}
+  .kpi-delta{font-family:'DM Mono',monospace;font-size:10px;margin-top:5px;}
+  .kpi-delta.up{color:var(--green);}
+  .kpi-delta.down{color:var(--red);}
+  .kpi-delta.neutral{color:var(--text3);}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+  .full-width{margin-bottom:14px;}
+  .panel{background:var(--surface);border:1px solid var(--border);overflow:hidden;}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--surface2);}
+  .panel-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;}
+  .panel-tag{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent2);background:rgba(96,200,240,0.1);border:1px solid rgba(96,200,240,0.2);padding:2px 7px;letter-spacing:0.5px;}
+  .panel-body{padding:14px;}
+  .waterfall{display:flex;flex-direction:column;gap:2px;}
+  .waterfall-stage{display:flex;align-items:center;gap:0;height:38px;}
+  .waterfall-label{width:130px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);text-align:right;padding-right:10px;flex-shrink:0;}
+  .waterfall-track{flex:1;height:26px;background:var(--surface3);position:relative;}
+  .waterfall-bar{height:100%;position:absolute;left:0;display:flex;align-items:center;padding:0 8px;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:#000;transition:width 0.7s cubic-bezier(.4,0,.2,1);white-space:nowrap;overflow:hidden;}
+  .waterfall-conv{width:55px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-align:right;padding-left:8px;flex-shrink:0;}
+  .opp-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .opp-card{background:var(--surface2);border:1px solid var(--border);padding:12px;position:relative;overflow:hidden;}
+  .opp-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+  .opp-card.acquisition::after{background:var(--accent);}
+  .opp-card.upsell::after{background:var(--accent2);}
+  .opp-card.crosssell::after{background:var(--accent4);}
+  .opp-card.renewal::after{background:var(--green);}
+  .opp-type{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
+  .opp-card.acquisition .opp-type{color:var(--accent);}
+  .opp-card.upsell .opp-type{color:var(--accent2);}
+  .opp-card.crosssell .opp-type{color:var(--accent4);}
+  .opp-card.renewal .opp-type{color:var(--green);}
+  .opp-arr{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:4px;}
+  .opp-stat{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);}
+  .mix-bar{height:8px;display:flex;overflow:hidden;margin-bottom:10px;gap:1px;}
+  .mix-segment{height:100%;transition:flex 0.7s cubic-bezier(.4,0,.2,1);}
+  .mix-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;}
+  .mix-legend-item{display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);}
+  .mix-dot{width:8px;height:8px;flex-shrink:0;}
+  .data-table{width:100%;border-collapse:collapse;}
+  .data-table th{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:7px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .data-table th:first-child{text-align:left;}
+  .data-table td{font-family:'DM Mono',monospace;font-size:11px;color:var(--text);padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);}
+  .data-table td:first-child{text-align:left;color:var(--text2);font-size:10px;}
+  .data-table tr:last-child td{border-bottom:none;font-weight:600;color:var(--accent);}
+  .data-table tr:hover td{background:rgba(255,255,255,0.015);}
+  .input-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .input-group{display:flex;flex-direction:column;gap:4px;}
+  .input-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;display:flex;align-items:center;gap:5px;}
+  .bench-tag{background:rgba(96,200,240,0.1);border:1px solid rgba(96,200,240,0.2);color:var(--accent2);font-size:8px;padding:1px 5px;}
+  .input-row{display:flex;align-items:center;background:var(--surface3);border:1px solid var(--border);transition:border-color 0.2s;}
+  .input-row:focus-within{border-color:var(--accent);}
+  .input-row input{flex:1;background:transparent;border:none;outline:none;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);padding:7px 9px;}
+  .input-unit{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);padding:0 9px;}
+  .pipeline-cov{display:flex;align-items:center;gap:14px;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);margin-bottom:10px;}
+  .cov-number{font-family:'DM Serif Display',serif;font-size:28px;}
+  .cov-status{font-family:'DM Mono',monospace;font-size:10px;padding:3px 9px;letter-spacing:0.5px;}
+  .cov-status.good{background:rgba(96,240,160,0.1);border:1px solid rgba(96,240,160,0.25);color:var(--green);}
+  .cov-status.warn{background:rgba(240,160,96,0.1);border:1px solid rgba(240,160,96,0.25);color:var(--accent4);}
+  .cov-status.bad{background:rgba(240,80,96,0.1);border:1px solid rgba(240,80,96,0.25);color:var(--red);}
+  .bench-callout{display:flex;gap:8px;padding:9px 11px;background:rgba(96,200,240,0.05);border-left:2px solid var(--accent2);margin-top:8px;}
+  .bench-callout-text{font-size:11px;color:var(--text2);line-height:1.5;}
+  .bench-callout-text strong{color:var(--accent2);font-weight:600;}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
+  .toggle-label{font-size:12px;color:var(--text2);}
+  .toggle-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:2px;}
+  .toggle{width:34px;height:19px;background:var(--surface3);border:1px solid var(--border2);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0;}
+  .toggle.on{background:var(--accent);border-color:var(--accent);}
+  .toggle::after{content:'';position:absolute;width:13px;height:13px;background:var(--text3);top:2px;left:2px;transition:all 0.2s;}
+  .toggle.on::after{left:17px;background:#000;}
+  .table-scroll{overflow-x:auto;}
+  .footer-bar{display:flex;align-items:center;justify-content:space-between;padding:9px 28px;border-top:1px solid var(--border);background:var(--surface);font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);}
+  ::-webkit-scrollbar{width:4px;height:4px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--surface3);}
+  .cta-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:rgba(200,240,96,0.06);border-top:1px solid rgba(200,240,96,0.15);border-bottom:1px solid rgba(200,240,96,0.15);}
+  .cta-left{display:flex;flex-direction:column;gap:3px;}
+  .cta-title{font-family:'DM Serif Display',serif;font-size:15px;color:var(--text);}
+  .cta-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);}
+  .cta-btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.5px;padding:10px 20px;text-decoration:none;border:none;cursor:pointer;transition:opacity 0.2s;white-space:nowrap;}
+  .cta-btn:hover{opacity:0.85;}
+  .cta-btn-ghost{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.5px;padding:10px 20px;text-decoration:none;border:1px solid var(--border2);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+  .cta-btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+  .header-cta{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#000;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.5px;padding:7px 14px;text-decoration:none;border:none;cursor:pointer;transition:opacity 0.2s;}
+  .header-cta:hover{opacity:0.85;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-mark">D</div>
+    <div>
+      <div class="header-title">Demand Gen Forecast</div>
+      <div class="header-subtitle">FY2026 · B2B SaaS · Revenue Waterfall</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="header-badge">B2B Revenue Waterfall</span>
+    <a href="YOUR_GUMROAD_URL" target="_blank" class="header-cta">Get the Google Sheet →</a>
+  </div>
+</div>
+
+<div class="scenario-bar">
+  <span class="scenario-label">Scenario</span>
+  <button class="scenario-btn" id="btn-downside" onclick="setScenario('downside',this)">Downside</button>
+  <button class="scenario-btn active" id="btn-base" onclick="setScenario('base',this)">Base</button>
+  <button class="scenario-btn" id="btn-upside" onclick="setScenario('upside',this)">Upside</button>
+  <span class="forrester-badge">✦ 2025–26 Industry Benchmarks</span>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="showSection('overview',this)">Overview</div>
+  <div class="nav-tab" onclick="showSection('waterfall',this)">Revenue Waterfall</div>
+  <div class="nav-tab" onclick="showSection('channels',this)">Channel Funnels</div>
+  <div class="nav-tab" onclick="showSection('assumptions',this)">Assumptions</div>
+  <div class="nav-tab" onclick="showSection('benchmarks',this)">Industry Benchmarks</div>
+</div>
+
+<div class="main">
+
+<!-- OVERVIEW -->
+<div class="section active" id="section-overview">
+  <div class="kpi-row" id="kpi-row"></div>
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">ARR Walk — Monthly Build</span><span class="panel-tag">Ending ARR M12</span></div>
+      <div class="panel-body"><svg id="arr-chart" viewBox="0 0 540 155" style="width:100%;height:155px;"></svg></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">New ARR by Channel</span><span class="panel-tag">FY Mix</span></div>
+      <div class="panel-body">
+        <div class="mix-bar" id="mix-bar"></div>
+        <div class="mix-legend" id="mix-legend"></div>
+        <div class="table-scroll"><table class="data-table" id="channel-table"></table></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel full-width">
+    <div class="panel-header"><span class="panel-title">Opportunity Mix — B2B Revenue Waterfall</span><span class="panel-tag">4 Opportunity Types</span></div>
+    <div class="panel-body">
+      <div class="opp-cards" id="opp-cards"></div>
+      <div class="bench-callout" style="margin-top:12px;"><span class="bench-callout-text"><strong>Research:</strong> Acquisition opps have the longest cycles and lowest conversion. Renewal converts at the highest rate. Model all four types separately — each has distinct win rates, cycle times, and resource requirements.</span></div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Pipeline Coverage Ratio</span><span class="panel-tag">Best Practice: 4–6× Required</span></div>
+      <div class="panel-body">
+        <div class="pipeline-cov">
+          <div><div class="kpi-label">Coverage Ratio</div><div class="cov-number" id="cov-number">—</div></div>
+          <div><div class="cov-status" id="cov-status">—</div><div style="font-size:11px;color:var(--text3);margin-top:5px;" id="cov-desc">—</div></div>
+        </div>
+        <div class="bench-callout"><span class="bench-callout-text"><strong>Industry benchmark:</strong> Enterprise B2B requires <strong>4–6×</strong> pipeline coverage to achieve ARR targets at typical win rates.</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Program Toggles</span><span class="panel-tag">Impact Modeled</span></div>
+      <div class="panel-body">
+        <div class="toggle-row">
+          <div><div class="toggle-label">Nurture Program Active</div><div class="toggle-sub">+50% sales-ready leads · −33% cost (industry research)</div></div>
+          <div class="toggle on" id="nurture-toggle" onclick="toggleNurture()"></div>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Intent Signal Qualification</div><div class="toggle-sub">MQL→SQL: 16.4% vs 9.8% median (Industry research 2026)</div></div>
+          <div class="toggle on" id="intent-toggle" onclick="toggleIntent()"></div>
+        </div>
+        <div class="toggle-row" style="border-bottom:none;">
+          <div><div class="toggle-label">ABM Account-Based Motion</div><div class="toggle-sub">+41% win rate · +33% ACV (Demandbase 2026)</div></div>
+          <div class="toggle" id="abm-toggle" onclick="toggleABM()"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WATERFALL -->
+<div class="section" id="section-waterfall">
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Acquisition — Account Waterfall</span><span class="panel-tag">New Logo</span></div>
+      <div class="panel-body">
+        <div class="waterfall" id="waterfall-acq"></div>
+        <div class="bench-callout" style="margin-top:10px;"><span class="bench-callout-text"><strong>Research:</strong> Opportunity-centric — accounts move as buying groups. MQL→SQL median: <strong>9.8%</strong>; with intent signals: <strong>16.4%</strong>.</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Expansion — Upsell + Cross-sell + Renewal</span><span class="panel-tag">Existing Base</span></div>
+      <div class="panel-body">
+        <div class="waterfall" id="waterfall-exp"></div>
+        <div class="bench-callout" style="margin-top:10px;"><span class="bench-callout-text"><strong>Research:</strong> Renewal converts at highest rate. Upsell outperforms cross-sell. Target <strong>NRR 120–140%</strong> for usage-based models.</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel full-width">
+    <div class="panel-header"><span class="panel-title">12-Month Revenue Waterfall</span><span class="panel-tag">Bookings (Lagged) → ARR Walk</span></div>
+    <div class="panel-body table-scroll"><table class="data-table" id="monthly-table"></table></div>
+  </div>
+</div>
+
+<!-- CHANNELS -->
+<div class="section" id="section-channels">
+  <div class="three-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Paid Search</span><span class="panel-tag" style="color:var(--accent);border-color:rgba(200,240,96,0.25);background:rgba(200,240,96,0.05);">FY Spend: $<span id="ps-spend">—</span></span></div>
+      <div class="panel-body table-scroll"><table class="data-table" id="ps-table"></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Paid Social</span><span class="panel-tag" style="color:var(--accent4);border-color:rgba(240,160,96,0.25);background:rgba(240,160,96,0.05);">FY Spend: $<span id="pso-spend">—</span></span></div>
+      <div class="panel-body table-scroll"><table class="data-table" id="pso-table"></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Organic / SEO→AEO</span><span class="panel-tag" style="color:var(--green);border-color:rgba(96,240,160,0.25);background:rgba(96,240,160,0.05);"><span id="org-sessions">—</span> Sessions M1</span></div>
+      <div class="panel-body table-scroll"><table class="data-table" id="org-table"></table></div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Outbound / SDR</span><span class="panel-tag"><span id="sdr-count">—</span> SDRs · <span id="sdr-meetings">—</span> Meetings/mo M1</span></div>
+      <div class="panel-body table-scroll"><table class="data-table" id="sdr-table"></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Blended Paid CAC Trend</span><span class="panel-tag">$/Won — Paid Channels</span></div>
+      <div class="panel-body">
+        <svg id="cac-chart" viewBox="0 0 340 135" style="width:100%;height:135px;"></svg>
+        <div class="bench-callout"><span class="bench-callout-text"><strong>Industry benchmark:</strong> Median B2B CPL <strong>$213</strong> (2026). Top-quartile programs achieve <strong>$84</strong> with ICP-aligned targeting.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ASSUMPTIONS -->
+<div class="section" id="section-assumptions">
+  <div class="three-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Global Assumptions</span></div>
+      <div class="panel-body">
+        <div class="input-grid">
+          <div class="input-group"><div class="input-label">New Business ACV ($)</div><div class="input-row"><input type="number" id="in-acv" value="12000" onchange="recalc()"><span class="input-unit">$</span></div></div>
+          <div class="input-group"><div class="input-label">Gross Margin (%)</div><div class="input-row"><input type="number" id="in-gm" value="80" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label"><span>Booking Lag</span><span class="bench-tag">FORR</span></div><div class="input-row"><input type="number" id="in-lag" value="4" onchange="recalc()"><span class="input-unit">mo</span></div></div>
+          <div class="input-group"><div class="input-label"><span>Buying Group Size</span><span class="bench-tag">FORR</span></div><div class="input-row"><input type="number" id="in-bg" value="11" onchange="recalc()"><span class="input-unit">ppl</span></div></div>
+          <div class="input-group"><div class="input-label">Starting Base ARR</div><div class="input-row"><input type="number" id="in-base-arr" value="2400000" onchange="recalc()"><span class="input-unit">$</span></div></div>
+          <div class="input-group"><div class="input-label">Monthly Gross Ret.</div><div class="input-row"><input type="number" id="in-ret" value="99.5" step="0.1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Monthly Expansion</div><div class="input-row"><input type="number" id="in-exp" value="1.3" step="0.1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Pipeline Cov. Target</div><div class="input-row"><input type="number" id="in-cov" value="5" step="0.5" onchange="recalc()"><span class="input-unit">×</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Paid Search Assumptions</span></div>
+      <div class="panel-body">
+        <div class="input-grid">
+          <div class="input-group"><div class="input-label">Starting Spend (M1)</div><div class="input-row"><input type="number" id="in-ps-spend" value="50000" onchange="recalc()"><span class="input-unit">$</span></div></div>
+          <div class="input-group"><div class="input-label">Spend Growth m/m</div><div class="input-row"><input type="number" id="in-ps-growth" value="5" step="0.5" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label"><span>CPL ($)</span><span class="bench-tag">$213 med</span></div><div class="input-row"><input type="number" id="in-ps-cpl" value="213" onchange="recalc()"><span class="input-unit">$</span></div></div>
+          <div class="input-group"><div class="input-label">Lead → MQL</div><div class="input-row"><input type="number" id="in-ps-lmql" value="45" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label"><span>MQL → SQL</span><span class="bench-tag">9.8% med</span></div><div class="input-row"><input type="number" id="in-ps-msql" value="16" step="0.5" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">SQL → Opp</div><div class="input-row"><input type="number" id="in-ps-sopp" value="65" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Opp → Won</div><div class="input-row"><input type="number" id="in-ps-won" value="22" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Paid Social Assumptions</span></div>
+      <div class="panel-body">
+        <div class="input-grid">
+          <div class="input-group"><div class="input-label">Starting Spend (M1)</div><div class="input-row"><input type="number" id="in-pso-spend" value="35000" onchange="recalc()"><span class="input-unit">$</span></div></div>
+          <div class="input-group"><div class="input-label">Spend Growth m/m</div><div class="input-row"><input type="number" id="in-pso-growth" value="4" step="0.5" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">CPL ($)</div><div class="input-row"><input type="number" id="in-pso-cpl" value="240" onchange="recalc()"><span class="input-unit">$</span></div></div>
+          <div class="input-group"><div class="input-label">Lead → MQL</div><div class="input-row"><input type="number" id="in-pso-lmql" value="30" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label"><span>MQL → SQL</span><span class="bench-tag">9.8% med</span></div><div class="input-row"><input type="number" id="in-pso-msql" value="14" step="0.5" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">SQL → Opp</div><div class="input-row"><input type="number" id="in-pso-sopp" value="55" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Opp → Won</div><div class="input-row"><input type="number" id="in-pso-won" value="18" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="three-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Organic / AEO Assumptions</span></div>
+      <div class="panel-body">
+        <div class="input-grid">
+          <div class="input-group"><div class="input-label">Starting Sessions (M1)</div><div class="input-row"><input type="number" id="in-org-sess" value="80000" onchange="recalc()"><span class="input-unit">/mo</span></div></div>
+          <div class="input-group"><div class="input-label">Sessions Growth m/m</div><div class="input-row"><input type="number" id="in-org-growth" value="6" step="0.5" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Session → Lead</div><div class="input-row"><input type="number" id="in-org-sl" value="2.5" step="0.1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Lead → MQL</div><div class="input-row"><input type="number" id="in-org-lmql" value="55" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label"><span>MQL → SQL</span><span class="bench-tag">intent</span></div><div class="input-row"><input type="number" id="in-org-msql" value="16.4" step="0.5" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Opp → Won</div><div class="input-row"><input type="number" id="in-org-won" value="28" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Outbound / SDR Assumptions</span></div>
+      <div class="panel-body">
+        <div class="input-grid">
+          <div class="input-group"><div class="input-label">Starting SDR FTE</div><div class="input-row"><input type="number" id="in-sdr-fte" value="6" step="0.5" onchange="recalc()"><span class="input-unit">FTE</span></div></div>
+          <div class="input-group"><div class="input-label">SDR Ramp/Month</div><div class="input-row"><input type="number" id="in-sdr-ramp" value="0.5" step="0.5" onchange="recalc()"><span class="input-unit">FTE</span></div></div>
+          <div class="input-group"><div class="input-label">Meetings/SDR/mo</div><div class="input-row"><input type="number" id="in-sdr-mtg" value="12" step="1" onchange="recalc()"><span class="input-unit">/mo</span></div></div>
+          <div class="input-group"><div class="input-label">Meeting → Opp</div><div class="input-row"><input type="number" id="in-sdr-mopp" value="55" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+          <div class="input-group"><div class="input-label">Opp → Won</div><div class="input-row"><input type="number" id="in-sdr-won" value="20" step="1" onchange="recalc()"><span class="input-unit">%</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Scenario Multipliers</span></div>
+      <div class="panel-body">
+        <div style="margin-bottom:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);">Active: <span id="scenario-name" style="color:var(--accent);">BASE</span></div>
+        <div class="input-grid">
+          <div class="input-group"><div class="input-label">Paid Search ×</div><div class="input-row"><input type="number" id="in-mult-ps" value="1.00" step="0.05" onchange="recalc()"><span class="input-unit">×</span></div></div>
+          <div class="input-group"><div class="input-label">Paid Social ×</div><div class="input-row"><input type="number" id="in-mult-pso" value="1.00" step="0.05" onchange="recalc()"><span class="input-unit">×</span></div></div>
+          <div class="input-group"><div class="input-label">Organic ×</div><div class="input-row"><input type="number" id="in-mult-org" value="1.00" step="0.05" onchange="recalc()"><span class="input-unit">×</span></div></div>
+          <div class="input-group"><div class="input-label">Outbound ×</div><div class="input-row"><input type="number" id="in-mult-sdr" value="1.00" step="0.05" onchange="recalc()"><span class="input-unit">×</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BENCHMARKS -->
+<div class="section" id="section-benchmarks">
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Industry Benchmarks vs. This Model</span><span class="panel-tag">Alignment Check</span></div>
+      <div class="panel-body"><table class="data-table"><thead><tr><th style="text-align:left;">Metric</th><th>Industry Research / Market</th><th>This Model</th><th>Status</th></tr></thead><tbody id="bench-table-body"></tbody></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">B2B Revenue Waterfall — Framework Shift</span><span class="panel-tag">Lead-Centric → Opportunity-Centric</span></div>
+      <div class="panel-body">
+        <div style="padding:10px 12px;background:rgba(240,80,96,0.06);border-left:3px solid var(--red);margin-bottom:10px;">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Legacy Model (Lead-Centric)</div>
+          <div style="font-size:11px;color:var(--text2);">Lead → MQL → SAL → SQL → Opp → Closed Won</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);margin-top:4px;">Inquiry-to-close: &lt;1% (industry research)</div>
+        </div>
+        <div style="text-align:center;padding:4px;color:var(--text3);font-size:11px;">↓ Updated: B2B Revenue Waterfall</div>
+        <div style="padding:10px 12px;background:rgba(96,200,240,0.06);border-left:3px solid var(--accent2);margin-top:10px;">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">New Model (Opportunity-Centric)</div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:11px;color:var(--text2);">① <strong style="color:var(--text);">Targeted Accounts</strong> — ICP-fit, buying group mapped</div>
+            <div style="font-size:11px;color:var(--text2);">② <strong style="color:var(--text);">Engaged Accounts</strong> — 1st/3rd-party intent signals firing</div>
+            <div style="font-size:11px;color:var(--text2);">③ <strong style="color:var(--text);">Prioritized Accounts</strong> — Multiple members active</div>
+            <div style="font-size:11px;color:var(--text2);">④ <strong style="color:var(--text);">Qualified Opportunities</strong> — Sales-accepted, MEDDIC validated</div>
+            <div style="font-size:11px;color:var(--text2);">⑤ <strong style="color:var(--text);">Pipeline</strong> — 4 types: Acquisition / Upsell / Cross-sell / Renewal</div>
+            <div style="font-size:11px;color:var(--text2);">⑥ <strong style="color:var(--text);">Closed Won</strong> — Tracked by opportunity type separately</div>
+          </div>
+        </div>
+        <div class="bench-callout" style="margin-top:10px;"><span class="bench-callout-text"><strong>92% of B2B buying decisions</strong> are made by groups of 2+ people. Lead-centric models overstate pipeline and understate deal complexity.</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel full-width">
+    <div class="panel-header"><span class="panel-title">2026 Funnel Conversion Benchmarks by ACV Tier</span><span class="panel-tag">Gartner / Demand Gen Report / 6sense</span></div>
+    <div class="panel-body table-scroll">
+      <table class="data-table">
+        <thead><tr><th style="text-align:left;">ACV Tier</th><th>Lead→Close</th><th>Sales Cycle</th><th>Touchpoints</th><th>Buying Cmte</th><th>MQL→SQL Median</th><th>MQL→SQL w/ Intent</th><th>Pipeline Cov.</th></tr></thead>
+        <tbody>
+          <tr><td>SMB ($1K–$25K)</td><td>1.6%</td><td>84 days</td><td>14</td><td>3–5 people</td><td>9.8%</td><td>16.4%</td><td>3–4×</td></tr>
+          <tr><td>Mid-Market ($25K–$100K)</td><td>0.9%</td><td>121 days</td><td>23</td><td>7–11 people</td><td>9.8%</td><td>16.4%</td><td>4–6×</td></tr>
+          <tr><td>Enterprise ($100K–$500K)</td><td>0.4%</td><td>218 days</td><td>38</td><td>11–15 people</td><td>9.8%</td><td>16.4%</td><td>5–7×</td></tr>
+          <tr><td>Strategic ($500K+)</td><td>0.2%</td><td>312 days</td><td>51</td><td>15+ people</td><td>9.8%</td><td>16.4%</td><td>6–8×</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div class="cta-bar">
+  <div class="cta-left">
+    <div class="cta-title">Like what you see? Get the editable Google Sheet.</div>
+    <div class="cta-sub">Paste your real numbers in · Share with your team · Built on B2B Revenue Waterfall benchmarks</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a href="YOUR_GUMROAD_URL" target="_blank" class="cta-btn">Get the Google Sheet — $750 →</a>
+    <a href="YOUR_CONTACT_URL" target="_blank" class="cta-btn-ghost">Custom Build Inquiry</a>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <span>Demand Gen Forecast v2.0 · B2B Revenue Waterfall · Sources: Industry research 2025–26 (Gartner, Demand Gen Report, 6sense, HubSpot)</span>
+  <span id="footer-scenario">Scenario: BASE</span>
+</div>
+
+</div><!-- /app -->
+
+<script>
+var gState = { scenario:'base', nurture:true, intent:true, abm:false };
+var scenarios = {
+  base:     {ps:1.00,pso:1.00,org:1.00,sdr:1.00},
+  downside: {ps:0.70,pso:0.70,org:0.85,sdr:0.80},
+  upside:   {ps:1.30,pso:1.25,org:1.15,sdr:1.20}
+};
+
+function fmtM(v){ v=v||0; return '$'+(Math.abs(v)>=1e6?(v/1e6).toFixed(1)+'M':Math.abs(v)>=1e3?(v/1e3).toFixed(0)+'K':Math.round(v).toString()); }
+function fmtN(v){ v=v||0; return Math.abs(v)>=1e6?(v/1e6).toFixed(1)+'M':Math.abs(v)>=1e3?(v/1e3).toFixed(0)+'K':Math.round(v).toString(); }
+function inp(id){ return parseFloat(document.getElementById(id).value)||0; }
+
+function calcModel(){
+  var acv=inp('in-acv'), gm=inp('in-gm')/100, lag=Math.round(inp('in-lag'));
+  var baseARR=inp('in-base-arr'), ret=inp('in-ret')/100, expRate=inp('in-exp')/100;
+  var covT=inp('in-cov');
+  var mults=scenarios[gState.scenario];
+  var nurtMult=gState.nurture?1.5:1.0;
+  var abmWin=gState.abm?1.41:1.0, abmACV=gState.abm?1.33:1.0;
+  var eACV=acv*abmACV;
+
+  var ps0=inp('in-ps-spend'),psG=inp('in-ps-growth')/100,psCPL=inp('in-ps-cpl');
+  var psLMQL=inp('in-ps-lmql')/100,psMSQL=inp('in-ps-msql')/100,psSOpp=inp('in-ps-sopp')/100,psWon=inp('in-ps-won')/100*abmWin;
+  var pso0=inp('in-pso-spend'),psoG=inp('in-pso-growth')/100,psoCPL=inp('in-pso-cpl');
+  var psoLMQL=inp('in-pso-lmql')/100,psoMSQL=inp('in-pso-msql')/100,psoSOpp=inp('in-pso-sopp')/100,psoWon=inp('in-pso-won')/100*abmWin;
+  var orgS0=inp('in-org-sess'),orgG=inp('in-org-growth')/100,orgSL=inp('in-org-sl')/100;
+  var orgLMQL=inp('in-org-lmql')/100,orgMSQL=inp('in-org-msql')/100,orgWon=inp('in-org-won')/100*abmWin;
+  var sdrFTE0=inp('in-sdr-fte'),sdrRamp=inp('in-sdr-ramp'),sdrMtg=inp('in-sdr-mtg');
+  var sdrMOpp=inp('in-sdr-mopp')/100,sdrWon=inp('in-sdr-won')/100*abmWin;
+
+  var psD=[],psoD=[],orgD=[],sdrD=[];
+  for(var m=0;m<12;m++){
+    var psSp=ps0*Math.pow(1+psG,m)*mults.ps;
+    var psLd=psSp/psCPL, psMQ=psLd*psLMQL*nurtMult, psSQ=psMQ*psMSQL;
+    var psOp=psSQ*psSOpp, psW=psOp*psWon, psA=psW*eACV;
+    psD.push({spend:psSp,leads:psLd,mqls:psMQ,sqls:psSQ,opps:psOp,won:psW,arr:psA});
+
+    var psoSp=pso0*Math.pow(1+psoG,m)*mults.pso;
+    var psoLd=psoSp/psoCPL, psoMQ=psoLd*psoLMQL*nurtMult, psoSQ=psoMQ*psoMSQL;
+    var psoOp=psoSQ*psoSOpp, psoW=psoOp*psoWon, psoA=psoW*eACV;
+    psoD.push({spend:psoSp,leads:psoLd,mqls:psoMQ,sqls:psoSQ,opps:psoOp,won:psoW,arr:psoA});
+
+    var oSess=orgS0*Math.pow(1+orgG,m)*mults.org;
+    var oLd=oSess*orgSL, oMQ=oLd*orgLMQL*nurtMult, oSQ=oMQ*orgMSQL;
+    var oOp=oSQ*0.70, oW=oOp*orgWon, oA=oW*eACV;
+    orgD.push({sess:oSess,leads:oLd,mqls:oMQ,sqls:oSQ,opps:oOp,won:oW,arr:oA});
+
+    var sFTE=sdrFTE0+sdrRamp*m, sMtg=sFTE*sdrMtg*mults.sdr;
+    var sOp=sMtg*sdrMOpp, sW=sOp*sdrWon, sA=sW*eACV;
+    sdrD.push({fte:sFTE,meetings:sMtg,opps:sOp,won:sW,arr:sA});
+  }
+
+  var bookings=[];
+  for(var m=0;m<12;m++){
+    var idx=m-lag;
+    bookings.push(idx<0?0:(psD[idx].arr+psoD[idx].arr+orgD[idx].arr+sdrD[idx].arr));
+  }
+
+  var arrWalk=[]; var beg=baseARR;
+  for(var m=0;m<12;m++){
+    var ri=beg*(ret-1), ex=beg*expRate, nn=bookings[m], end=beg+ri+ex+nn;
+    var rec=end/12; arrWalk.push({beg:beg,ret:ri,exp:ex,netNew:nn,end:end,rec:rec,gp:rec*gm}); beg=end;
+  }
+
+  var totPS=psD.reduce(function(a,b){return a+b.arr;},0);
+  var totPSO=psoD.reduce(function(a,b){return a+b.arr;},0);
+  var totOrg=orgD.reduce(function(a,b){return a+b.arr;},0);
+  var totSDR=sdrD.reduce(function(a,b){return a+b.arr;},0);
+  var totNew=totPS+totPSO+totOrg+totSDR;
+  var totWon=psD.reduce(function(a,b){return a+b.won;},0)+psoD.reduce(function(a,b){return a+b.won;},0)+orgD.reduce(function(a,b){return a+b.won;},0)+sdrD.reduce(function(a,b){return a+b.won;},0);
+  var totSpend=psD.reduce(function(a,b){return a+b.spend;},0)+psoD.reduce(function(a,b){return a+b.spend;},0);
+  var totPaidWon=psD.reduce(function(a,b){return a+b.won;},0)+psoD.reduce(function(a,b){return a+b.won;},0);
+  var cac=totPaidWon>0?totSpend/totPaidWon:0;
+  var totOpps=psD.reduce(function(a,b){return a+b.opps;},0)+psoD.reduce(function(a,b){return a+b.opps;},0)+orgD.reduce(function(a,b){return a+b.opps;},0)+sdrD.reduce(function(a,b){return a+b.opps;},0);
+  var totBook=bookings.reduce(function(a,b){return a+b;},0);
+  var covRatio=totBook>0?(totOpps*eACV)/totBook:0;
+  var endARR=arrWalk[11].end, totRec=arrWalk.reduce(function(a,b){return a+b.rec;},0);
+
+  return {psD:psD,psoD:psoD,orgD:orgD,sdrD:sdrD,arrWalk:arrWalk,bookings:bookings,
+    totPS:totPS,totPSO:totPSO,totOrg:totOrg,totSDR:totSDR,totNew:totNew,
+    totWon:totWon,totSpend:totSpend,cac:cac,endARR:endARR,totRec:totRec,
+    covRatio:covRatio,covT:covT,totOpps:totOpps,eACV:eACV,
+    psSpendFY:psD.reduce(function(a,b){return a+b.spend;},0),
+    psoSpendFY:psoD.reduce(function(a,b){return a+b.spend;},0)
+  };
+}
+
+function render(){
+  var d=calcModel();
+  var mo=['M01','M02','M03','M04','M05','M06','M07','M08','M09','M10','M11','M12'];
+
+  // KPIs
+  var kpis=[
+    {l:'FY New ARR',v:fmtM(d.totNew),dt:'Booked before lag',c:'neutral'},
+    {l:'Ending ARR M12',v:fmtM(d.endARR),dt:'Inc. expansion & retention',c:'neutral'},
+    {l:'Total Closed Won',v:fmtN(d.totWon),dt:'All channels blended',c:'neutral'},
+    {l:'Blended Paid CAC',v:fmtM(d.cac),dt:'Paid channels only',c:'neutral'},
+    {l:'FY Recognized Rev',v:fmtM(d.totRec),dt:'Ending ARR ÷ 12 monthly',c:'neutral'},
+    {l:'Pipeline Coverage',v:d.covRatio.toFixed(1)+'×',dt:'Target: '+d.covT+'×',c:d.covRatio>=d.covT?'up':'down'}
+  ];
+  document.getElementById('kpi-row').innerHTML=kpis.map(function(k){
+    return '<div class="kpi-card"><div class="kpi-label">'+k.l+'</div><div class="kpi-value">'+k.v+'</div><div class="kpi-delta '+k.c+'">'+k.dt+'</div></div>';
+  }).join('');
+
+  // ARR CHART
+  var arr=d.arrWalk.map(function(a){return a.end;}), maxA=Math.max.apply(null,arr)||1;
+  var W=540,H=155,pd=24,bt=28;
+  var xs=arr.map(function(_,i){return pd+(i/11)*(W-2*pd);});
+  var ys=arr.map(function(v){return H-bt-(v/maxA)*(H-bt-12);});
+  var path=xs.map(function(x,i){return (i===0?'M':'L')+x+','+ys[i];}).join(' ');
+  var fill=path+' L'+xs[11]+','+(H-bt)+' L'+xs[0]+','+(H-bt)+' Z';
+  var dots=xs.map(function(x,i){return '<circle cx="'+x+'" cy="'+ys[i]+'" r="3" fill="var(--accent)" opacity="0.8"/>';}).join('');
+  var labs=xs.map(function(x,i){return '<text x="'+x+'" y="'+(H-6)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#4a5068">M'+(i+1)+'</text>';}).join('');
+  document.getElementById('arr-chart').innerHTML='<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8f060" stop-opacity="0.18"/><stop offset="100%" stop-color="#c8f060" stop-opacity="0"/></linearGradient></defs><path d="'+fill+'" fill="url(#ag)"/><path d="'+path+'" stroke="var(--accent)" stroke-width="1.5" fill="none"/>'+dots+labs+'<text x="5" y="18" font-family="DM Mono,monospace" font-size="9" fill="#4a5068">'+fmtM(maxA)+'</text>';
+
+  // MIX
+  var tn=d.totNew||1;
+  var mixes=[{l:'Organic',v:d.totOrg,c:'var(--green)'},{l:'Outbound',v:d.totSDR,c:'var(--accent2)'},{l:'Paid Search',v:d.totPS,c:'var(--accent)'},{l:'Paid Social',v:d.totPSO,c:'var(--accent4)'}];
+  document.getElementById('mix-bar').innerHTML=mixes.map(function(m){return '<div class="mix-segment" style="flex:'+m.v/tn+';background:'+m.c+';opacity:0.85;"></div>';}).join('');
+  document.getElementById('mix-legend').innerHTML=mixes.map(function(m){return '<div class="mix-legend-item"><div class="mix-dot" style="background:'+m.c+';"></div>'+m.l+' '+(m.v/tn*100).toFixed(1)+'%</div>';}).join('');
+  document.getElementById('channel-table').innerHTML='<thead><tr><th style="text-align:left;">Channel</th><th>New ARR</th><th>Won</th><th>Mix</th></tr></thead><tbody>'+
+    mixes.map(function(m,i){
+      var wonVals=[d.psD,d.psoD,d.orgD,d.sdrD];
+      // reorder to match mixes: org, sdr, ps, pso
+      var orderedWon=[d.orgD,d.sdrD,d.psD,d.psoD];
+      var w=orderedWon[i].reduce(function(a,b){return a+b.won;},0);
+      return '<tr><td>'+m.l+'</td><td>'+fmtM(m.v)+'</td><td>'+fmtN(w)+'</td><td>'+(m.v/tn*100).toFixed(1)+'%</td></tr>';
+    }).join('')+'<tr><td>Total</td><td>'+fmtM(d.totNew)+'</td><td>'+fmtN(d.totWon)+'</td><td>100%</td></tr></tbody>';
+
+  // OPP CARDS
+  var expTotal=d.arrWalk.reduce(function(a,b){return a+b.exp;},0);
+  document.getElementById('opp-cards').innerHTML=
+    '<div class="opp-card acquisition"><div class="opp-type">Acquisition</div><div class="opp-arr">'+fmtM(d.totNew)+'</div><div class="opp-stat">New Logo ARR · Longest cycle</div><div class="opp-stat" style="margin-top:4px;">Win rate varies by channel</div></div>'+
+    '<div class="opp-card upsell"><div class="opp-type">Upsell</div><div class="opp-arr">'+fmtM(expTotal*0.6)+'</div><div class="opp-stat">Usage expansion · 60% of expand</div><div class="opp-stat" style="margin-top:4px;">Better conv. than cross-sell</div></div>'+
+    '<div class="opp-card crosssell"><div class="opp-type">Cross-sell</div><div class="opp-arr">'+fmtM(expTotal*0.4)+'</div><div class="opp-stat">Adjacent products · 40% of expand</div><div class="opp-stat" style="margin-top:4px;">Moderate cycle + conversion</div></div>'+
+    '<div class="opp-card renewal"><div class="opp-type">Renewal</div><div class="opp-arr">'+fmtM(inp('in-base-arr')*(inp('in-ret')/100)*12)+'</div><div class="opp-stat">Highest conversion of all types</div><div class="opp-stat" style="margin-top:4px;">Cycle = contract term</div></div>';
+
+  // PIPELINE COVERAGE
+  var cov=d.covRatio;
+  document.getElementById('cov-number').textContent=cov.toFixed(1)+'×';
+  var cs=document.getElementById('cov-status'), cd=document.getElementById('cov-desc');
+  if(cov>=d.covT){cs.textContent='✓ On Target';cs.className='cov-status good';cd.textContent='At or above '+d.covT+'× best practice target';}
+  else if(cov>=d.covT*0.75){cs.textContent='⚠ Below Target';cs.className='cov-status warn';cd.textContent='Pipeline gap vs target';}
+  else{cs.textContent='✗ At Risk';cs.className='cov-status bad';cd.textContent='Significant gap vs '+d.covT+'× requirement';}
+
+  // WATERFALL
+  var maxOp=d.totOpps*20||1;
+  var wfS=[
+    {l:'Targeted Accts',v:d.totOpps*20,c:'#c8f060',p:null},
+    {l:'Engaged Accts',v:d.totOpps*8,c:'#a0d040',p:'40%'},
+    {l:'Prioritized',v:d.totOpps*3,c:'#80b030',p:'38%'},
+    {l:'Qualified Opps',v:d.totOpps,c:'#60c8f0',p:'33%'},
+    {l:'Active Pipeline',v:d.totOpps*0.85,c:'#40a0d0',p:'85%'},
+    {l:'Closed Won',v:d.totWon,c:'#20d080',p:null},
+  ];
+  document.getElementById('waterfall-acq').innerHTML=wfS.map(function(s){
+    return '<div class="waterfall-stage"><div class="waterfall-label">'+s.l+'</div><div class="waterfall-track"><div class="waterfall-bar" style="width:'+Math.min(100,s.v/maxOp*100)+'%;background:'+s.c+';">'+fmtN(s.v)+'</div></div><div class="waterfall-conv">'+(s.p?'↓ '+s.p:'')+'</div></div>';
+  }).join('');
+
+  var baseA=inp('in-base-arr'), maxExp=baseA||1;
+  var expS=[
+    {l:'Installed Base',v:baseA,c:'#60c8f0',p:null},
+    {l:'At-Risk Churn',v:baseA*(1-inp('in-ret')/100)*12,c:'#f05060',p:(100*(1-inp('in-ret')/100)).toFixed(2)+'%/mo'},
+    {l:'Expansion Pool',v:baseA*inp('in-exp')/100*12,c:'#f0a060',p:inp('in-exp').toFixed(1)+'%/mo'},
+    {l:'Net Expansion ARR',v:Math.max(0,d.arrWalk.reduce(function(a,b){return a+b.exp+b.ret;},0)),c:'#60f0a0',p:null},
+  ];
+  document.getElementById('waterfall-exp').innerHTML=expS.map(function(s){
+    return '<div class="waterfall-stage"><div class="waterfall-label">'+s.l+'</div><div class="waterfall-track"><div class="waterfall-bar" style="width:'+Math.min(100,Math.abs(s.v)/maxExp*100)+'%;background:'+s.c+';">'+fmtM(Math.abs(s.v))+'</div></div><div class="waterfall-conv">'+(s.p||'')+'</div></div>';
+  }).join('');
+
+  // MONTHLY TABLE
+  var mRows=[
+    {l:'New ARR Booked',vs:d.bookings,f:fmtM},
+    {l:'Beg. ARR',vs:d.arrWalk.map(function(a){return a.beg;}),f:fmtM},
+    {l:'Expansion',vs:d.arrWalk.map(function(a){return a.exp;}),f:fmtM},
+    {l:'Retention Δ',vs:d.arrWalk.map(function(a){return a.ret;}),f:fmtM},
+    {l:'Ending ARR',vs:d.arrWalk.map(function(a){return a.end;}),f:fmtM},
+    {l:'Recognized Rev',vs:d.arrWalk.map(function(a){return a.rec;}),f:fmtM},
+    {l:'Gross Profit',vs:d.arrWalk.map(function(a){return a.gp;}),f:fmtM},
+  ];
+  document.getElementById('monthly-table').innerHTML='<thead><tr><th style="text-align:left;">Metric</th>'+mo.map(function(m){return '<th>'+m+'</th>';}).join('')+'<th>FY Total</th></tr></thead><tbody>'+mRows.map(function(r){
+    return '<tr><td>'+r.l+'</td>'+r.vs.map(function(v){return '<td>'+r.f(v)+'</td>';}).join('')+'<td>'+r.f(r.vs.reduce(function(a,b){return a+b;},0))+'</td></tr>';
+  }).join('')+'</tbody>';
+
+  // CHANNEL TABLES helper
+  function chanTable(data,fields,labels,id,months){
+    var rows=fields.map(function(f,i){
+      var vals=data.map(function(d){return d[f];});
+      var fmt=labels[i].f;
+      var tot=vals.reduce(function(a,b){return a+b;},0);
+      return '<tr><td>'+labels[i].l+'</td>'+vals.slice(0,months).map(function(v){return '<td>'+fmt(v)+'</td>';}).join('')+'<td>'+fmt(tot)+'</td></tr>';
+    }).join('');
+    document.getElementById(id).innerHTML='<thead><tr><th style="text-align:left;"></th>'+mo.slice(0,months).map(function(m){return '<th>'+m+'</th>';}).join('')+'<th>FY</th></tr></thead><tbody>'+rows+'</tbody>';
+  }
+  var pL=[{l:'Spend',f:fmtM},{l:'Leads',f:fmtN},{l:'MQLs',f:fmtN},{l:'SQLs',f:fmtN},{l:'Won',f:function(v){return v.toFixed(1);}},{l:'New ARR',f:fmtM}];
+  chanTable(d.psD,['spend','leads','mqls','sqls','won','arr'],pL,'ps-table',6);
+  chanTable(d.psoD,['spend','leads','mqls','sqls','won','arr'],pL,'pso-table',6);
+  var oL=[{l:'Sessions',f:fmtN},{l:'Leads',f:fmtN},{l:'MQLs',f:fmtN},{l:'SQLs',f:fmtN},{l:'Won',f:function(v){return v.toFixed(1);}},{l:'New ARR',f:fmtM}];
+  chanTable(d.orgD,['sess','leads','mqls','sqls','won','arr'],oL,'org-table',6);
+  var sL=[{l:'SDR FTE',f:function(v){return v.toFixed(1);}},{l:'Meetings',f:fmtN},{l:'Opps',f:fmtN},{l:'Won',f:function(v){return v.toFixed(1);}},{l:'New ARR',f:fmtM}];
+  chanTable(d.sdrD,['fte','meetings','opps','won','arr'],sL,'sdr-table',6);
+
+  document.getElementById('ps-spend').textContent=fmtM(d.psSpendFY).replace('$','');
+  document.getElementById('pso-spend').textContent=fmtM(d.psoSpendFY).replace('$','');
+  document.getElementById('org-sessions').textContent=fmtN(d.orgD[0].sess);
+  document.getElementById('sdr-count').textContent=inp('in-sdr-fte').toFixed(1);
+  document.getElementById('sdr-meetings').textContent=(inp('in-sdr-fte')*inp('in-sdr-mtg')).toFixed(0);
+
+  // CAC CHART
+  var cacV=d.psD.map(function(p,i){
+    var pw=p.won+d.psoD[i].won, ps=p.spend+d.psoD[i].spend;
+    return pw>0?ps/pw:0;
+  });
+  var maxC=Math.max.apply(null,cacV)*1.1||1;
+  var cW=340,cH=135,cP=28,cB=22;
+  var cxs=cacV.map(function(_,i){return cP+(i/11)*(cW-2*cP);});
+  var cys=cacV.map(function(v){return cH-cB-(v/maxC)*(cH-cB-10);});
+  var cPath=cxs.map(function(x,i){return (i===0?'M':'L')+x+','+cys[i];}).join(' ');
+  var cFill=cPath+' L'+cxs[11]+','+(cH-cB)+' L'+cxs[0]+','+(cH-cB)+' Z';
+  document.getElementById('cac-chart').innerHTML='<defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0a060" stop-opacity="0.2"/><stop offset="100%" stop-color="#f0a060" stop-opacity="0"/></linearGradient></defs><path d="'+cFill+'" fill="url(#cg)"/><path d="'+cPath+'" stroke="var(--accent4)" stroke-width="1.5" fill="none"/>'+cxs.map(function(x,i){return '<circle cx="'+x+'" cy="'+cys[i]+'" r="3" fill="var(--accent4)"/>';}).join('')+cxs.map(function(x,i){return '<text x="'+x+'" y="'+(cH-5)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#4a5068">M'+(i+1)+'</text>';}).join('')+'<text x="4" y="14" font-family="DM Mono,monospace" font-size="9" fill="#4a5068">'+fmtM(maxC)+'</text>';
+
+  // BENCHMARKS TABLE
+  var bmRows=[
+    {l:'CPL — Paid Search',fv:'$213 median (2026)',mv:'$'+inp('in-ps-cpl'),ok:inp('in-ps-cpl')<=250},
+    {l:'MQL → SQL',fv:'9.8% median / 16.4% intent',mv:inp('in-ps-msql').toFixed(1)+'%',ok:inp('in-ps-msql')>=9.8&&inp('in-ps-msql')<=20},
+    {l:'Booking Lag',fv:'4–5 mo SMB / 6+ MM',mv:inp('in-lag')+' mo',ok:inp('in-lag')>=4},
+    {l:'Buying Group Size',fv:'11.2 avg (>$50K ACV)',mv:inp('in-bg')+' people',ok:inp('in-bg')>=9},
+    {l:'Pipeline Coverage',fv:'4–6× (industry research)',mv:d.covRatio.toFixed(1)+'×',ok:d.covRatio>=d.covT},
+    {l:'Monthly Gross Retention',fv:'≥99.5% enterprise',mv:inp('in-ret')+'%',ok:inp('in-ret')>=99.0},
+  ];
+  document.getElementById('bench-table-body').innerHTML=bmRows.map(function(r){
+    return '<tr><td>'+r.l+'</td><td style="color:var(--accent2);font-family:\'DM Mono\',monospace;font-size:10px;">'+r.fv+'</td><td style="font-family:\'DM Mono\',monospace;">'+r.mv+'</td><td style="color:'+(r.ok?'var(--green)':'var(--accent4)')+';">'+(r.ok?'✓ Aligned':'⚠ Review')+'</td></tr>';
+  }).join('');
+
+  document.getElementById('footer-scenario').textContent='Scenario: '+gState.scenario.toUpperCase()+' · Nurture: '+(gState.nurture?'ON':'OFF')+' · Intent: '+(gState.intent?'ON':'OFF')+' · ABM: '+(gState.abm?'ON':'OFF');
+  document.getElementById('scenario-name').textContent=gState.scenario.toUpperCase();
+}
+
+function setScenario(s,btn){
+  gState.scenario=s;
+  var sc=scenarios[s];
+  document.getElementById('in-mult-ps').value=sc.ps.toFixed(2);
+  document.getElementById('in-mult-pso').value=sc.pso.toFixed(2);
+  document.getElementById('in-mult-org').value=sc.org.toFixed(2);
+  document.getElementById('in-mult-sdr').value=sc.sdr.toFixed(2);
+  document.querySelectorAll('.scenario-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  render();
+}
+function showSection(id,tab){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('section-'+id).classList.add('active');
+  if(tab)tab.classList.add('active');
+}
+function toggleNurture(){
+  gState.nurture=!gState.nurture;
+  document.getElementById('nurture-toggle').classList.toggle('on',gState.nurture);
+  render();
+}
+function toggleIntent(){
+  gState.intent=!gState.intent;
+  document.getElementById('intent-toggle').classList.toggle('on',gState.intent);
+  document.getElementById('in-org-msql').value=gState.intent?16.4:9.8;
+  document.getElementById('in-ps-msql').value=gState.intent?16:10;
+  document.getElementById('in-pso-msql').value=gState.intent?14:9;
+  render();
+}
+function toggleABM(){
+  gState.abm=!gState.abm;
+  document.getElementById('abm-toggle').classList.toggle('on',gState.abm);
+  render();
+}
+function recalc(){render();}
+render();
+</script>
+</body>
+</html>
